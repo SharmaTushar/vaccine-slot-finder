@@ -1,4 +1,5 @@
 import axios from "axios";
+import { VaccinationCenter } from "./types";
 
 const endPoint =
   "https://cdn-api.co-vin.in/api/v2/appointment/sessions/calendarByDistrict";
@@ -28,21 +29,22 @@ const fetchCenters = async () => {
     )
   );
 
-  const allCenters = result
-    .filter(({ status }) => status === "fulfilled")
-    .map(({ value }) => value)
-    .reduce((acc, item) => {
-      if (item.data) {
-        acc.push(...item.data.centers);
-      }
-      return acc;
-    }, []);
+  const allCenters = result.reduce((acc: Array<VaccinationCenter>, item) => {
+    if (item.status !== "fulfilled") return acc;
+    if (item.value.data) {
+      const {
+        centers,
+      }: { centers: Array<VaccinationCenter> } = item.value.data;
+      acc.push(...centers);
+    }
+    return acc;
+  }, []);
 
   return allCenters;
 };
 
-const findCenters = (list) => {
-  const eligibleCenters = list.filter((center) =>
+const findCenters = (list: Array<VaccinationCenter>) => {
+  const eligibleCenters = list.filter((center: VaccinationCenter) =>
     center.sessions.some(
       (session) =>
         session.min_age_limit === 18 && session.available_capacity > 0
@@ -51,7 +53,7 @@ const findCenters = (list) => {
   return eligibleCenters;
 };
 
-const alert = (centers) => {
+const alert = (centers: Array<VaccinationCenter>) => {
   console.log(`${centers.length} centers found`);
   process.stdout.write("\x07");
 };
