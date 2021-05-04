@@ -1,34 +1,72 @@
-const axios = require('axios');
+import axios from "axios";
 
-const endPoint = 'https://cdn-api.co-vin.in/api/v2/appointment/sessions/calendarByPin'
+const endPoint =
+  "https://cdn-api.co-vin.in/api/v2/appointment/sessions/calendarByDistrict";
 
 const interval = 60 * 1000;
-const pincode = '302020';
+const districts = {
+  505: "Jaipur I",
+  506: "Jaipur II",
+};
+
+const fetchCenters = async () => {
+  const currentDate = new Date();
+  const date = `${currentDate.getDate().toString().padStart(2, "0")}-${(
+    currentDate.getMonth() + 1
+  )
+    .toString()
+    .padStart(2, "0")}-${currentDate.getFullYear()}`;
+
+  const result = await Promise.allSettled(
+    Object.keys(districts).map((district) =>
+      axios.get(endPoint, {
+        params: {
+          district_id: district,
+          date,
+        },
+      })
+    )
+  );
+
+  const allCenters = result
+    .filter(({ status }) => status === "fulfilled")
+    .map(({ value }) => value)
+    .reduce((acc, item) => {
+      if (item.data) {
+        acc.push(...item.data.centers);
+      }
+      return acc;
+    }, []);
+
+  return allCenters;
+};
 
 const findCenters = (list) => {
-  const eligibleCenters = list.centers.filter(center => center.sessions.some(session => session.min_age_limit === 18 && session.available_capacity > 0));
+  const eligibleCenters = list.filter((center) =>
+    center.sessions.some(
+      (session) =>
+        session.min_age_limit === 18 && session.available_capacity > 0
+    )
+  );
   return eligibleCenters;
 };
 
 const alert = (centers) => {
   console.log(`${centers.length} centers found`);
-  process.stdout.write('\x07');
+  process.stdout.write("\x07");
 };
 
 const performTask = async () => {
-  const currentDate = new Date();
-  const params = {
-    pincode,
-    date: `${currentDate.getDate().toString().padStart(2, '0')}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getFullYear()}`
-  };
-
   try {
-    const result = await axios.get(endPoint, {
-      params
-    });
-    const centers = findCenters(result.data);
+    const fetchedCenters = await fetchCenters();
+    const centers = findCenters(fetchedCenters);
     console.log(`${centers.length} centers found at ${new Date().toString()}`);
     if (centers.length > 0) {
+      console.group("Centers");
+      centers.forEach(({ name, district_name, pincode }) => {
+        console.log(name, district_name, pincode);
+      });
+      console.groupEnd();
       alert(centers);
       return true;
     }
@@ -41,16 +79,9 @@ const performTask = async () => {
 };
 
 const startTask = async () => {
-  const isTaskSuccessful = await performTask();
-  if (isTaskSuccessful) process.exit(0);
-
-  let runner = setInterval(() => {
-    performTask().then(isComplete => {
-      if (isComplete) {
-        clearInterval(runner);
-        process.exit(0);
-      }
-    })
+  performTask();
+  setInterval(() => {
+    performTask();
   }, interval);
 };
 
