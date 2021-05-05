@@ -1,8 +1,10 @@
 import axios from "axios";
-import {returnData} from "./interceptors/response-interceptors.js";
+import {addHeaders} from "./interceptors/request-incerceptors";
+import {logError, returnData} from "./interceptors/response-interceptors";
 import {VaccinationCenter} from "../types";
 
-axios.interceptors.response.use(returnData);
+axios.interceptors.request.use(addHeaders);
+axios.interceptors.response.use(returnData, logError);
 
 const baseUrl = "https://cdn-api.co-vin.in/api/v2";
 

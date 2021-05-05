@@ -28,6 +28,7 @@ const performTask = async () => {
     }
   } catch (err) {
     console.log(`Request failed at ${new Date().toString()}`, err.message);
+    console.error(err.stack);
     return false;
   }
 
